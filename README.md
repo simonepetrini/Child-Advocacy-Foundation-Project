@@ -176,3 +176,57 @@ CONSTRAINT FK_INCONTRI_VALUTAZIONI FOREIGN KEY (ID_Valutazione) REFERENCES DIM_V
 Nell'ottica di uno scenario aziendale plausibile, in cui l'implementazione di un database non viene fatta ex-novo, ma attingendo a dati facilmente reperibili da vari strumenti aziendali, ho immaginato che il popolamento delle dimensioni relative alle Risorse interne all'organizzazione e, di conseguenza, alla gerarchia in cui strutturare i dipartimenti di Advocacy, potesse essere effettuato attingendo ad un'esportazione dati generata da un ipotetico portale aziendale gestito dalle risorse umane; Quest'esportazione si concretizza in un file .csv riepilogativo di tutti i dati necessari al popolamento della tabella DIM_RISORSE, che sono andato a denormalizzare per ottenere ulteriori file .csv utili al popolamento delle altre tabelle derivate (DIM_DIPARTIMENTI, DIM_AREE e DIM_TEMATICHE).
 
 Per generare il file.csv delle risorse mi sono avvalso della libreria Random di Python
+
+```python
+import pandas as pd
+import random
+from datetime import datetime, timedelta
+import string
+
+# Creazione di una lista con i 100 nomi più diffusi in Italia
+nomi = [
+        "Francesco", "Alessandro", "Lorenzo", "Mattia", "Leonardo", "Andrea", "Gabriele", "Matteo", "Riccardo", "Davide", "Giuseppe", "Simone",
+        "Marco", "Antonio", "Federico", "Giovanni", "Luca", "Filippo", "Christian", "Nicola", "Stefano", "Tommaso", "Edoardo", "Alberto",
+        "Raffaele", "Michele", "Daniele", "Giorgio", "Enrico", "Rocco", "Emanuele", "Roberto", "Diego", "Massimo", "Vincenzo", "Fabio",
+        "Paolo", "Salvatore", "Emiliano", "Giacomo", "Angelo", "Pietro", "Domenico", "Mario", "Claudio", "Sergio", "Nicolò", "Dario", "Giulio",
+        "Alessio", "Giulia", "Sofia", "Aurora", "Alice", "Ginevra", "Emma", "Martina", "Chiara", "Giorgia", "Sara", "Francesca", "Anna",
+        "Beatrice", "Eleonora", "Elisa", "Laura", "Alessia", "Valentina", "Matilde", "Ludovica", "Greta", "Luna", "Viola", "Lucia",
+        "Alessandra", "Vittoria", "Noemi", "Caterina", "Federica", "Elena", "Roberta", "Serena", "Camilla", "Linda", "Carolina", "Rachele",
+        "Bianca", "Nicole", "Miriam", "Silvia", "Veronica", "Stella", "Eva", "Lisa", "Simona", "Cristina", "Isabella", "Rosanna", "Nina",
+        "Arianna"
+    ]
+
+# Dalla lista nomi estrapolo quelli di genere femminile, utili per la generazione del codice fiscale
+nomi_femminili = [
+            "Giulia", "Sofia", "Aurora", "Alice", "Ginevra", "Emma", "Martina", "Chiara", "Giorgia", "Sara", "Francesca", "Anna", "Beatrice", 
+            "Eleonora", "Elisa", "Laura", "Alessia", "Valentina", "Matilde", "Ludovica", "Greta", "Luna", "Viola", "Lucia", "Alessandra", 
+            "Vittoria", "Noemi", "Caterina", "Federica", "Elena", "Roberta", "Serena", "Camilla", "Linda", "Carolina", "Rachele", "Bianca", 
+            "Nicole", "Miriam", "Silvia", "Veronica", "Stella", "Eva", "Lisa", "Simona", "Cristina", "Isabella", "Rosanna", "Nina", "Arianna"
+    ]
+
+# Creazione di una lista con i 100 cognomi più diffusi in Italia
+cognomi = [
+        "Rossi", "Russo", "Ferrari", "Esposito", "Bianchi", "Romano", "Colombo", "Ricci", "Marino", "Greco", "Bruno", "Gallo", "Conti", "De Luca",
+        "Mancini", "Costa", "Giordano", "Rizzo", "Lombardi", "Moretti", "Barbieri", "Fontana", "Santoro", "Mariani", "Rinaldi", "Caruso", 
+        "Ferrara", "Galli", "Martini", "Leone", "Longo", "Gentile", "Martinelli", "Vitale", "Lombardo", "Serra", "Coppola", "De Santis", 
+        "D'Angelo", "Marchetti", "Parisi", "Villa", "Conte", "Ferraro", "Ferri", "Fabbri", "Bianco", "Marini", "Grasso", "Valentini", "Messina", 
+        "Sala", "De Angelis", "Gatti", "Pellegrini", "Palumbo", "Sanna", "Farina", "Rizzi", "Monti", "Cattaneo", "Morelli", "Amato", "Silvestri", 
+        "Mazza", "Testa", "Grassi", "Palmieri", "Bernardi", "Fiore", "De Rosa", "D'Amico", "Giuliani", "Cattaneo", "Riva", "Marra", "Sartori", 
+        "Ruggiero", "Longo", "Neri", "Barone", "Caputo", "Montanari", "Guerra", "Sacco", "Carbone", "Salvatore", "Messi", "De Angelis"
+    ]
+
+# Creo la lista nomi_casuali, popolandola con 100 record casuali dalla lista dei nomi
+nomi_casuali = random.choices(nomi, k=100)
+
+# Creo la lista cognomi_casuali, popolandola con 100 record casuali dalla lista dei cognnomi
+cognomi_casuali = random.choices(cognomi, k=100)
+
+# Creo il DataFrame
+Anagrafiche = pd.DataFrame({
+    'Nome': nomi_casuali,
+    'Cognome': cognomi_casuali
+})
+
+
+
+```
