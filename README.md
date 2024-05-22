@@ -780,7 +780,173 @@ riferimenti = riferimenti.reindex(columns=nuovo_ordine)
 riferimenti.to_csv('DIM_RIFERIMENTI.csv', index=False)
 ``` 
 
-#### Fase 5: Popolamento delle tabelle DIM tramite la funzione BULK di SQL Server e inserimento manuale:
+#### Fase 5: Generazione randomica dei record della tabella FACTS_INCONTRI tramite script Python:
+
+``` python
+import pandas as pd
+
+Full_Istituzioni_link = "Full_Istituzioni.csv"
+Full_Istituzioni = pd.read_csv(Full_Istituzioni_link)
+
+import random
+# Definisco il numero totale di record da selezionare
+total_records = 496
+
+# Definisco le percentuali di incontro per istituzione
+percentages = {
+    'Private': 0.05,
+    'Parlamento Europeo': 0.15,
+    'Altro': 0.10,
+    'Parlamento Italiano': 0.45,
+    'Governo Italiano': 0.25
+}
+
+# Calcol0 il numero di record da selezionare per ogni istituzione
+num_records = {key: int(total_records * percentage) for key, percentage in percentages.items()}
+sampled_records = []
+
+# Imposto la scelta randomica dei record per ogni istituzione
+for istituzione, count in num_records.items():
+    subset = Full_Istituzioni[Full_Istituzioni['Istituzione'] == istituzione]
+    sampled_records.extend(random.choices(subset.to_dict('records'), k=count))
+sampled_df = pd.DataFrame(sampled_records)
+
+sampled_df.drop('Partito', axis=1, inplace=True)
+sampled_df.drop('Foto', axis=1, inplace=True)
+
+# Funzione per verificare se una data è una festività italiana
+def is_holiday(date):
+    italian_holidays = [
+        (1, 1),    # Capodanno
+        (1, 6),    # Epifania
+        (4, 25),   # Festa della Liberazione
+        (5, 1),    # Festa dei Lavoratori
+        (6, 2),    # Festa della Repubblica
+        (8, 15),   # Assunzione di Maria
+        (11, 1),   # Ognissanti
+        (12, 8),   # Immacolata Concezione
+        (12, 25),  # Natale
+        (12, 26)   # Santo Stefano
+    ]
+    if (date.month, date.day) in italian_holidays:
+        return True
+    if date.weekday() == 6:  # Domenica
+        return True
+    return False
+
+# Funzione per generare una data randomica dal 01/01/2022 ad oggi, escludendo i giorni festivi
+def generate_random_date():
+    start_date = datetime(2022, 1, 1)
+    end_date = datetime.today()
+    while True:
+        random_days = random.randint(0, (end_date - start_date).days)
+        random_date = start_date + timedelta(days=random_days)
+        if not is_holiday(random_date):
+            return random_date
+
+from datetime import datetime, timedelta
+# Aggiungo la colonna 'Data_Incontro' con date randomiche valide
+sampled_df['Data_Incontro'] = [generate_random_date() for _ in range(len(sampled_df))]
+
+sampled_df = sampled_df.sort_values(by='Data_Incontro')
+
+# Scelta randomica per modalità di incontro
+sampled_df['Modalita_Incontro'] = [random.choice(['Online', 'De Visu']) for _ in range(len(sampled_df))]
+
+#Predispongo la colonna INFO per inserimenti futuri
+sampled_df['Info'] = None
+
+# Definisco i pesi per ogni valore di 'Id_Valutazione'
+valutazione_choices = [1, 2, 3, 4, 5]
+valutazione_weights = [0.03, 0.22, 0.40, 0.30, 0.05]
+sampled_df['Id_Valutazione'] = random.choices(valutazione_choices, weights=valutazione_weights, k=len(sampled_df))
+
+#Creo ID_Incontro
+sampled_df['ID_Incontro'] = range(1, len(sampled_df) + 1)
+
+#Importo il file Anagrafiche, mantengo i record per Ruolo = Dipendente ed elimino le colonne non utili
+Anagrafiche_link = "anagrafiche.csv"
+Anagrafiche = pd.read_csv(Anagrafiche_link)
+Anagrafiche.drop('Data di Nascita', axis=1, inplace=True)
+Anagrafiche.drop('Sesso', axis=1, inplace=True)
+Anagrafiche.drop('Codice Fiscale', axis=1, inplace=True)
+Anagrafiche.drop('Mail', axis=1, inplace=True)
+Anagrafiche.drop('LoginID', axis=1, inplace=True)
+Anagrafiche = Anagrafiche[Anagrafiche['Ruolo'] != 'Direttore']
+Anagrafiche.drop('Data Assunzione', axis=1, inplace=True)
+Anagrafiche.drop('Data Fine Rapporto', axis=1, inplace=True)
+Anagrafiche.drop('Stato Ruolo', axis=1, inplace=True)
+
+# Aggiungo il campo Tematica
+lista_tematiche = Anagrafiche['Tematica'].unique().tolist()
+tematiche_casuali = random.choices(lista_tematiche, k=494)
+sampled_df['Tematica'] = tematiche_casuali
+
+#Aggiungo il campo Promotore
+nome_promotore = []
+cognome_promotore = []
+
+for index, row in sampled_df.iterrows():
+    tematica_corrente = row['Tematica']
+    records_con_tematica = Anagrafiche[Anagrafiche['Tematica'] == tematica_corrente]
+    record_scelto = random.choice(records_con_tematica.to_dict('records'))
+    nome_promotore.append(record_scelto['Nome'])
+    cognome_promotore.append(record_scelto['Cognome'])
+    
+sampled_df['Nome Promotore'] = nome_promotore
+sampled_df['Cognome Promotore'] = cognome_promotore
+
+#Aggiungo il campo Accompagnatore, tenendo conto che la risorsa lavori nella stessa Tematica del promotore
+nome_accompagnatore = []
+cognome_accompagnatore = []
+
+for index, row in sampled_df.iterrows():
+    tematica_corrente = row['Tematica']
+    records_con_tematica = Anagrafiche[Anagrafiche['Tematica'] == tematica_corrente]
+    record_scelto = random.choice(records_con_tematica.to_dict('records'))
+    nome_accompagnatore.append(record_scelto['Nome'])
+    cognome_accompagnatore.append(record_scelto['Cognome'])
+    
+sampled_df['Nome Accompagnatore'] = nome_accompagnatore
+sampled_df['Cognome Accompagnatore'] = cognome_accompagnatore
+
+# Importo il file delle KPI e pulisco i dati
+KPI_link = "kpi_tem.csv"
+KPI = pd.read_csv(KPI_link)
+KPI[' Tematica'] = KPI[' Tematica'].replace('Povert├á Educativa', 'Povertà Educativa')
+KPI[' Tematica'] = KPI[' Tematica'].replace('Criminalit├á Minorile', 'Criminalitá Minorile')
+KPI[' Tematica'] = KPI[' Tematica'].replace('Supporto alla Genitorialit├á', 'Supporto alla Genitorialitá')
+KPI[' Tematica'] = KPI[' Tematica'].replace('Quartieri dÔÇÖInnovazione', 'Quartieri d"Innovazione')
+KPI.rename(columns={' Tematica': 'Tematica'}, inplace=True)
+KPI.rename(columns={' Nome KPI Tematica': 'Nome KPI Tematica'}, inplace=True)
+
+# Assegnazione randomica KPI Tematica
+import numpy as np
+
+lista_KPI = []
+
+for index, row in sampled_df.iterrows():
+    tematica_corrente = row['Tematica']
+    records_con_tematica = KPI[KPI['Tematica'] == tematica_corrente]
+    
+    if not records_con_tematica.empty:
+        record_scelto = random.choice(records_con_tematica.to_dict('records'))
+        lista_KPI.append(record_scelto['Nome KPI Tematica'])
+    else:
+        lista_KPI.append(np.nan)  # Aggiungi un valore nullo se non ci sono record disponibili
+
+sampled_df['KPI Tematica'] = lista_KPI
+
+nuovo_ordine = ['ID_Incontro', 'Nome Promotore', 'Cognome Promotore', 'Nome Accompagnatore', 'Cognome Accompagnatore', 'Data_Incontro', 'Modalita_Incontro', 'Istituzione', 'Direzione', 'Ufficio',
+                'Riferimento', 'Tematica', 'KPI Tematica', 'Id_Valutazione', 'Info']
+sampled_df = sampled_df.reindex(columns=nuovo_ordine)
+
+sampled_df.to_csv('sampled.csv', index=False)
+```
+
+Ho provveduto successivamente a pulire i dati e a denormalizzare la tabella dei fatti tramite il Query Editor di Excel, esportando il relativo file .csv per il caricamento su SQL Server
+
+#### Fase 6: Popolamento delle tabelle tramite la funzione BULK di SQL Server e inserimento manuale:
 
 ```sql
 USE ChildAdvocacyFoundation;
