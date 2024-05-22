@@ -560,3 +560,123 @@ nuovo_ordine = ['ID_Risorsa', 'Nome', 'Cognome', 'Data_di_Nascita', 'Sesso', 'Co
 Anagrafiche_Tematiche = Anagrafiche_Tematiche.reindex(columns=nuovo_ordine)
 Anagrafiche_Tematiche.to_csv('DIM_RISORSE.csv', index=False)
 ```
+
+#### Fase 4: Estrazione dati online tramite web scraping con la libreria BeautifulSoup di Python per popolare le tabelle DIM_ISTITUZIONI, DIM_DIREZIONI, DIM_UFFICI E DIM_RIFERIMENTI: 
+
+Per popolare le tabelle DIM_ISTITUZIONI, DIM_DIREZIONI, DIM_UFFICI E DIM_RIFERIMENTI ho creato uno script Python utilizzando la libreria BeautifulSoup per estrapolare le anagrafiche di interesse.
+Ho deciso di limitare il numero delle istituzioni analizzabili ai soli Parlamento Italiano, Governo Italiano, Parlamento Europeo, Settore Private e Altro.
+Per il Parlamento Italiano ho estratto, dai siti istituzionali della Camera dei Deputati e del Senato della Repubblica, tutti i componenti delle relative Commissioni Permanenti; per il Governo Italiano ho estratto la lista dei ministri dal sito del Senato; per il Parlamento Europeo la lista di tutti i parlamentari europei dal sito https://www.europarl.europa.eu/meps/it; per il settore Private ho scaricato dal sito del Sole 24 Ore la lista aggiornata delle 200 aziende italiane leader della sostenibilità (per cui ho generato i riferimenti utilizzando lo stesso criterio di randomicità utilizzato per la creazione delle risorse dell'organizzazione; mentre per l'istituzione Altro ho estratto l'elenco completo dei Rettori delle principali Università italiane dal sito del CRUI (Conferenza Rettori Università Italiane).
+
+Allego a video, come esempio, lo script utilizzato per la Camera dei Deputati (gli altri sono in allegato nella directory di Github)
+
+```python
+
+import requests
+from bs4 import BeautifulSoup
+
+base_url = "https://www.camera.it"
+list_details = "/leg19/48"
+list_url = base_url+list_details
+print(list_url)
+
+req = requests.get(list_url)
+print(req.text)
+soup = BeautifulSoup(req.text)
+
+commissioni = soup.find_all("ul", class_="tab_text_ul")
+
+titles_list = []
+hrefs_list = []
+
+for commission in commissioni:
+    links = commission.find_all('a')
+    for link in links:
+        title = link.get('title')
+        href = link.get('href')
+        titles_list.append(title)
+        hrefs_list.append(href)
+
+url2 = "https://www.camera.it/leg19/"
+hrefs_list = [url2 + href for href in hrefs_list]
+
+import re
+
+# Lista per i titoli modificati
+modified_titles_list = []
+
+# Espressione regolare per estrarre il testo tra parentesi
+parentheses_regex = re.compile(r'\((.*?)\)')
+
+# Itera sui titoli originali e estrai il testo tra parentesi
+for title in titles_list:
+    match = parentheses_regex.search(title)
+    if match:
+        modified_titles_list.append(match.group(1))
+
+# Lista per i titoli modificati con la prima lettera di ogni parola maiuscola
+formatted_titles_list = []
+
+# Itera sui titoli modificati e applica la formattazione
+for title in modified_titles_list:
+    formatted_title = title.title()
+    formatted_titles_list.append(formatted_title)
+
+titles_list = formatted_titles_list
+
+import pandas as pd
+Uffici = pd.DataFrame({'Ufficio': titles_list, 'Link': hrefs_list})
+Uffici['Direzione'] = 'Camera dei Deputati'
+Uffici = Uffici[['Direzione', 'Ufficio', 'Link']]
+
+new_links = []
+
+for href in hrefs_list:
+    record_req = requests.get(href)
+    record_soup = BeautifulSoup(record_req.text, 'html.parser')
+    composizione_link = record_soup.find('a', title='Composizione')
+    if composizione_link:
+        composizione_href = composizione_link.get('href')
+        new_link = url2 + composizione_href
+        new_links.append(new_link)
+    else:
+        new_links.append(None)
+
+Uffici['Link_2'] = new_links
+pd.set_option('display.max_colwidth', None)
+
+data_dicts = []
+
+for link in Uffici['Link_2']:
+    if link:
+        req = requests.get(link)
+        soup = BeautifulSoup(req.text, 'html.parser')
+        riferimenti = [element.find('a').text.strip() for element in soup.find_all(class_='fn')]
+        partiti = [element.find('a').text.strip() for element in soup.find_all(class_='org')]
+        foto_urls = [element.find('img')['src'] if element.find('img') else None for element in soup.find_all(class_='has_foto')]
+        
+        for riferimento, partito, foto_url in zip(riferimenti, partiti, foto_urls):
+            data_dict = {
+                'Link_2': link,
+                'Riferimento': riferimento,
+                'Partito': partito,
+                'Foto': foto_url
+            }
+            data_dicts.append(data_dict)
+    else: 
+        data_dict = {
+            'Link_2': None,
+            'Riferimento': None,
+            'Partito': None,
+            'Foto': None
+        }
+        data_dicts.append(data_dict)
+        
+Riferimenti = pd.DataFrame(data_dicts)
+
+Uffici_full = pd.merge(Riferimenti, Uffici, on='Link_2', how='left')
+Uffici_full = Uffici_full.drop(columns=['Link', 'Link_2'])
+nuovo_ordine = ['Direzione', 'Ufficio', 'Riferimento', 'Partito', 'Foto']
+Uffici_full = Uffici_full.reindex(columns=nuovo_ordine)
+
+Uffici_full.to_csv('camera.csv', index=False)
+```
