@@ -1,4 +1,4 @@
-# Child-Advocacy-Foundation-Project
+# Child Advocacy Foundation Project
 
 ### Case Study
 
