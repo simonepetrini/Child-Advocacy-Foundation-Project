@@ -1247,3 +1247,6 @@ SELECT * FROM VW_SP_Legge231
 ```
 #### Per la creazione dei report legati alla Legge 231/2007 basterà importare la relativa view in Excel per generare una tabella completa degli incontri istituzionali per l'anno corrente
 
+#### Fase 8: Realizzazione report in Microsoft Power BI:
+
+https://github.com/simonepetrini/Child-Advocacy-Foundation-Project/blob/main/Presentazione%20Report%20ChildAdvocacyFoundation.mp4
