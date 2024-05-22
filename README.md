@@ -680,3 +680,28 @@ Uffici_full = Uffici_full.reindex(columns=nuovo_ordine)
 
 Uffici_full.to_csv('camera.csv', index=False)
 ```
+
+Unificazione dei file .csv delle varie istituzioni in un unico dataframe
+
+``` python
+import pandas as pd
+
+parlamento_italiano_link = "parlamento_italiano.csv"
+parlamento_italiano = pd.read_csv(parlamento_italiano_link)
+governo_italiano_link = "governo_italiano.csv"
+governo_italiano = pd.read_csv(governo_italiano_link)
+parlamento_europeo_link = "parlamento_europeo.csv"
+parlamento_europeo = pd.read_csv(parlamento_europeo_link)
+private_link = "private.csv"
+private = pd.read_csv(private_link)
+altro_link = "altro.csv"
+altro = pd.read_csv(altro_link)
+
+Full_Istituzioni = pd.concat([parlamento_italiano, governo_italiano, parlamento_europeo, private, altro], ignore_index=True)
+Full_Istituzioni.to_csv('Full_Istituzioni.csv', index=False)
+```
+
+Denormalizzazione delle istituzioni
+
+``` python
+``` 
