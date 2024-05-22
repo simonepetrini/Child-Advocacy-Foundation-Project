@@ -704,4 +704,78 @@ Full_Istituzioni.to_csv('Full_Istituzioni.csv', index=False)
 Denormalizzazione delle istituzioni
 
 ``` python
+import pandas as pd
+
+Full_Istituzioni_link = "Full_Istituzioni.csv"
+Full_Istituzioni = pd.read_csv(Full_Istituzioni_link)
+
+# Fase di pulizia del dato
+Full_Istituzioni['Direzione'] = Full_Istituzioni['Direzione'].str.replace(',', '')
+Full_Istituzioni['Ufficio'] = Full_Istituzioni['Ufficio'].str.replace(',', '')
+Full_Istituzioni['Partito'] = Full_Istituzioni['Partito'].str.replace(',', '')
+
+def aggiorna_ufficio(row):
+    if row['Direzione'] == 'Camera dei Deputati':
+        if row['Ufficio'] == 'Difesa':
+            return 'Commissione Permanente Difesa della Camera'
+        elif row['Ufficio'] == 'Giustizia':
+            return 'Commissione Permanente Giustizia della Camera'
+    elif row['Direzione'] == 'Ministero della Difesa' and row['Ufficio'] == 'Difesa':
+        return 'Ministro della Difesa'
+    elif row['Direzione'] == 'Senato della Repubblica' and row['Ufficio'] == 'Giustizia':
+        return 'Commissione Permanente Giustizia del Senato'
+    elif row['Direzione'] == 'Ministero della Giustizia' and row['Ufficio'] == 'Giustizia':
+        return 'Ministro della Giustizia'
+    return row['Ufficio']
+
+Full_Istituzioni['Ufficio'] = Full_Istituzioni.apply(aggiorna_ufficio, axis=1)
+
+#Creazione del file DIM_ISTITUZIONI
+lista_istituzioni = Full_Istituzioni['Istituzione'].unique().tolist()
+ID_Istituzione = [f"{str(i+1)}" for i in range(len(lista_istituzioni))]
+dizionario_istituzioni = dict(zip(lista_istituzioni, ID_Istituzione))
+DIM_ISTITUZIONI = pd.DataFrame(list(dizionario_istituzioni.items()), columns=['Nome_Istituzione', 'ID_Istituzione'])
+nuovo_ordine = ['ID_Istituzione', 'Nome_Istituzione']
+DIM_ISTITUZIONI = DIM_ISTITUZIONI.reindex(columns=nuovo_ordine)
+DIM_ISTITUZIONI.to_csv('DIM_ISTITUZIONI.csv', index=False)
+
+#Creazione del file DIM_DIREZIONI
+direzioni = Full_Istituzioni.iloc[:, :2]
+direzioni_2 = direzioni[['Istituzione', 'Direzione']].drop_duplicates()
+direzioni_2.rename(columns={'Istituzione': 'Nome_Istituzione'}, inplace=True)
+direzioni = pd.merge(direzioni_2, DIM_ISTITUZIONI, on='Nome_Istituzione', how='left')
+direzioni.drop('Nome_Istituzione', axis=1, inplace=True)
+direzioni.rename(columns={'Direzione': 'Nome_Direzione'}, inplace=True)
+ID_Direzione = [f"{str(i+1)}" for i in range(len(direzioni))]
+direzioni['ID_Direzione'] = ID_Direzione
+nuovo_ordine = ['ID_Direzione', 'Nome_Direzione', 'ID_Istituzione']
+direzioni = direzioni.reindex(columns=nuovo_ordine)
+direzioni.to_csv('DIM_DIREZIONI.csv', index=False)
+
+#Creazione del file DIM_UFFICI
+uffici = Full_Istituzioni.iloc[:, 1:3]
+uffici_2 = uffici[['Direzione', 'Ufficio']].drop_duplicates()
+uffici_2.rename(columns={'Direzione': 'Nome_Direzione'}, inplace=True)
+uffici = pd.merge(uffici_2, direzioni, on='Nome_Direzione', how='left')
+uffici.drop(['Nome_Direzione'], axis=1, inplace=True)
+uffici.drop(['ID_Istituzione'], axis=1, inplace=True)
+uffici.rename(columns={'Ufficio': 'Nome_Ufficio'}, inplace=True)
+ID_Ufficio = [f"{str(i+1)}" for i in range(len(uffici))]
+uffici['ID_Ufficio'] = ID_Ufficio
+nuovo_ordine = ['ID_Ufficio', 'Nome_Ufficio', 'ID_Direzione']
+uffici = uffici.reindex(columns=nuovo_ordine)
+uffici.to_csv('DIM_UFFICI.csv', index=False)
+
+#Creazione del file DIM_RIFERIMENTI
+riferimenti = Full_Istituzioni.iloc[:, 2:6]
+riferimenti.rename(columns={'Ufficio': 'Nome_Ufficio'}, inplace=True)
+riferimenti = pd.merge(riferimenti, uffici, on='Nome_Ufficio', how='left')
+riferimenti.drop(['Nome_Ufficio'], axis=1, inplace=True)
+riferimenti.drop(['ID_Direzione'], axis=1, inplace=True)
+riferimenti.rename(columns={'Riferimento': 'Nome_Riferimento'}, inplace=True)
+ID_Riferimento = [f"{str(i+1)}" for i in range(len(riferimenti))]
+riferimenti['ID_Riferimento'] = ID_Riferimento
+nuovo_ordine = ['ID_Riferimento', 'Nome_Riferimento', 'Partito', 'Foto', 'ID_Ufficio']
+riferimenti = riferimenti.reindex(columns=nuovo_ordine)
+riferimenti.to_csv('DIM_RIFERIMENTI.csv', index=False)
 ``` 
