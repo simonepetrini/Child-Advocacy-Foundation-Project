@@ -484,3 +484,79 @@ Anagrafiche['LoginID'] = Anagrafiche.apply(generate_login, axis=1)
 percorso_file_csv = "anagrafiche.csv"
 Anagrafiche.to_csv(percorso_file_csv, index=False)
 ```
+
+Denormalizzazione del file anagrafiche.csv per creare i vari file per popolare le tabelle DIM_DIPARTIMENTI, DIM_AREE e DIM_TEMATICHE e DIM_RISORSE
+
+```python
+import pandas as pd
+
+#Creazione del file DIM_DIPARTIMENTI
+Anagrafiche_link = "anagrafiche.csv"
+Anagrafiche = pd.read_csv(Anagrafiche_link)
+lista_dipartimenti = Anagrafiche['Dipartimento'].unique().tolist()
+ID_Dipartimento = [f"{str(i+1)}" for i in range(len(lista_dipartimenti))]
+dizionario_dipartimenti = dict(zip(ID_Dipartimento, lista_dipartimenti))
+DIM_DIPARTIMENTI = pd.DataFrame(list(dizionario_dipartimenti.items()), columns=['ID_Dipartimento', 'Nome_Dipartimento'])
+DIM_DIPARTIMENTI.to_csv('DIM_DIPARTIMENTI.csv', index=False)
+
+#Creazione del file DIM_AREE
+aree = Anagrafiche.iloc[:, 6:8]
+aree = aree[['Dipartimento', 'Area']].drop_duplicates()
+aree.rename(columns={'Dipartimento': 'Nome_Dipartimento'}, inplace=True)
+aree = aree.dropna(subset=['Area'])
+aree = pd.merge(aree, DIM_DIPARTIMENTI, on='Nome_Dipartimento', how='left')
+aree.drop('Nome_Dipartimento', axis=1, inplace=True)
+aree.rename(columns={'Area': 'Nome_Area'}, inplace=True)
+ID_Area = [f"{str(i+1)}" for i in range(len(aree))]
+aree['ID_Area'] = ID_Area
+nuovo_ordine = ['ID_Area', 'Nome_Area', 'ID_Dipartimento']
+aree = aree.reindex(columns=nuovo_ordine)
+aree.to_csv('DIM_AREE.csv', index=False)
+
+#Creazione del file DIM_TEMATICHE
+tematiche = Anagrafiche.iloc[:, 7:9]
+tematiche = tematiche[['Area', 'Tematica']].drop_duplicates()
+tematiche.rename(columns={'Area': 'Nome_Area'}, inplace=True)
+tematiche = tematiche.dropna(subset=['Tematica'])
+tematiche = pd.merge(tematiche, aree, on='Nome_Area', how='left')
+tematiche['Descrizione_Tematica'] = None   # Colonna compilata con None ma prevista per future indicazioni 
+tematiche.rename(columns={'Tematica': 'Nome_Tematica'}, inplace=True)
+tematiche.drop('Nome_Area', axis=1, inplace=True)
+tematiche.drop('ID_Dipartimento', axis=1, inplace=True)
+ID_Tematica = [f"{str(i+1)}" for i in range(len(tematiche))]
+tematiche['ID_Tematica'] = ID_Tematica
+nuovo_ordine = ['ID_Tematica', 'Nome_Tematica', 'Descrizione_Tematica', 'ID_Area']
+tematiche = tematiche.reindex(columns=nuovo_ordine)
+tematiche.to_csv('DIM_TEMATICHE.csv', index=False)
+
+#Creazione del file DIM_RISORSE
+DIM_DIPARTIMENTI.rename(columns={'Nome_Dipartimento': 'Dipartimento'}, inplace=True)
+aree.rename(columns={'Nome_Area': 'Area'}, inplace=True)
+tematiche.rename(columns={'Nome_Tematica': 'Tematica'}, inplace=True)
+Anagrafiche_Dipartimenti = pd.merge(Anagrafiche, DIM_DIPARTIMENTI, on='Dipartimento', how='inner')
+Anagrafiche_Dipartimenti.drop('Dipartimento', axis=1, inplace=True)
+Anagrafiche_Aree = pd.merge(Anagrafiche_Dipartimenti, aree, on='Area', how='left')
+Anagrafiche_Aree.drop('Area', axis=1, inplace=True)
+Anagrafiche_Aree.drop('ID_Dipartimento_y', axis=1, inplace=True)
+Anagrafiche_Aree.rename(columns={'ID_Dipartimento_x' : 'ID_Dipartimento'}, inplace=True)
+Anagrafiche_Tematiche = pd.merge(Anagrafiche_Aree, tematiche, on='Tematica', how='left')
+Anagrafiche_Tematiche.drop('Tematica', axis=1, inplace=True)
+Anagrafiche_Tematiche.drop('ID_Area_y', axis=1, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'ID_Area_x' : 'ID_Area'}, inplace=True)
+Anagrafiche_Tematiche.drop('Descrizione_Tematica', axis=1, inplace=True)
+ID_Risorsa = [f"{str(i+1)}" for i in range(len(Anagrafiche_Tematiche))]
+Anagrafiche_Tematiche['ID_Risorsa'] = ID_Risorsa
+
+Anagrafiche_Tematiche.rename(columns={'Data di Nascita' : 'Data_di_Nascita'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Codice Fiscale' : 'Codice_Fiscale'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Data Assunzione' : 'Data_Assunzione'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Data Fine Rapporto' : 'Data_Fine_Rapporto'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Data Inizio Ruolo' : 'Data_Inizio_Ruolo'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Data Fine Ruolo' : 'Data_Fine_Ruolo'}, inplace=True)
+Anagrafiche_Tematiche.rename(columns={'Stato Ruolo' : 'Stato_Ruolo'}, inplace=True)
+
+nuovo_ordine = ['ID_Risorsa', 'Nome', 'Cognome', 'Data_di_Nascita', 'Sesso', 'Codice_Fiscale', 'Ruolo', 'ID_Dipartimento', 'ID_Area', 'ID_Tematica',
+                'Data_Assunzione', 'Data_Fine_Rapporto', 'Data_Inizio_Ruolo', 'Data_Fine_Ruolo', 'Stato_Ruolo', 'Mail', 'LoginID']
+Anagrafiche_Tematiche = Anagrafiche_Tematiche.reindex(columns=nuovo_ordine)
+Anagrafiche_Tematiche.to_csv('DIM_RISORSE.csv', index=False)
+```
