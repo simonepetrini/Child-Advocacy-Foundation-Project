@@ -11,3 +11,5 @@ Richiede inoltre una riorganizzazione delle fonti dati interne all'Organizzazion
 La creazione del DB permetterà ai singoli dipendenti del dipartimento l'inserimento dei singoli report istituzionali, evitando possibili ridondanze e manipolazioni emerse con l'attuale sistema di registrazione (inserimento massivo dei record su file Excel non protetto).
 
 #### Fase 1: Progettazione Concettuale della Base Dati: 
+
+![alt text](https://https://github.com/simonepetrini/Child-Advocacy-Foundation-Project/blob/main/Progettazione%20Concettuale.jpg?raw=True)
