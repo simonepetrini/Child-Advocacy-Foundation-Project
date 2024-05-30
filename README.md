@@ -1249,4 +1249,8 @@ SELECT * FROM VW_SP_Legge231
 
 #### Fase 8: Realizzazione report in Microsoft Power BI:
 
-https://github.com/simonepetrini/Child-Advocacy-Foundation-Project/blob/main/Presentazione%20Report%20ChildAdvocacyFoundation.mp4
+Si rimanda al file .pbix per il dettaglio di progettazione.
+
+### PER UNA PANORAMICA COMPLETA DEL PROGETTO FINALE RIMANDO AL VIDEO DI PRESENTAZIONE:
+
+https://www.youtube.com/watch?v=_JsbtHVJveY
